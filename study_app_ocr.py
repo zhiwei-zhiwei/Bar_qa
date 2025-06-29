@@ -89,6 +89,15 @@ class StudyAppOCR:
     def extract_text_from_pdf_ocr(self, pdf_path):
         """Extract text from PDF using OCR"""
         try:
+            # Check if poppler is available
+            import subprocess
+            try:
+                subprocess.run(['pdftoppm', '-h'], capture_output=True, check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                st.error("⚠️ OCR dependencies not available in deployment environment. Please install poppler-utils.")
+                st.info("💡 This app requires system dependencies that may not be available in all deployment environments.")
+                return None
+            
             # Convert PDF to images
             images = convert_from_path(pdf_path, dpi=300)
             
@@ -102,6 +111,7 @@ class StudyAppOCR:
             
         except Exception as e:
             st.error(f"Error extracting text from {pdf_path}: {str(e)}")
+            st.info("💡 If you're seeing this error in deployment, make sure poppler-utils is installed via packages.txt")
             return None
     
     def parse_question_and_explanation(self, text):
