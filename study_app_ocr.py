@@ -8,6 +8,7 @@ from pdf2image import convert_from_path
 from PIL import Image
 import tempfile
 import json
+import base64
 
 class StudyAppOCR:
     def __init__(self):
@@ -15,6 +16,22 @@ class StudyAppOCR:
         self.pdf_files = self.get_pdf_files()
         self.answers_file = "correct_answers.json"
         self.load_or_create_answers_file()
+        self.init_session_state()
+        
+    def init_session_state(self):
+        """Initialize session state variables"""
+        if 'current_question' not in st.session_state:
+            st.session_state.current_question = 1
+        if 'show_explanation' not in st.session_state:
+            st.session_state.show_explanation = False
+        if 'ocr_cache' not in st.session_state:
+            st.session_state.ocr_cache = {}
+        if 'question_data_cache' not in st.session_state:
+            st.session_state.question_data_cache = {}
+        if 'current_user' not in st.session_state:
+            st.session_state.current_user = ""
+        if 'user_answers_file' not in st.session_state:
+            st.session_state.user_answers_file = ""
         
     def load_or_create_answers_file(self):
         """Load existing answers file or create a new one"""
@@ -392,6 +409,123 @@ class StudyAppOCR:
         
         return None
 
+    def get_user_answers_file(self, username):
+        """Get the JSON file path for a specific user"""
+        if not username:
+            return None
+        # Create safe filename from username
+        safe_username = re.sub(r'[^\w\-_\.]', '_', username)
+        return f"user_answers_{safe_username}.json"
+    
+    def load_user_answers(self, answers_file):
+        """Load user answers from JSON file"""
+        if not answers_file or not os.path.exists(answers_file):
+            return {}
+        try:
+            with open(answers_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Error loading user answers: {e}")
+            return {}
+    
+    def save_user_answers(self, answers_file, answers_data):
+        """Save user answers to JSON file"""
+        if not answers_file:
+            return
+        try:
+            with open(answers_file, 'w', encoding='utf-8') as f:
+                json.dump(answers_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            st.error(f"Error saving user answers: {e}")
+
+    def user_management_section(self):
+        """Handle user login/creation section"""
+        st.markdown("### 👤 User Management")
+        
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            username = st.text_input(
+                "Enter your name to track your progress:",
+                value=st.session_state.current_user,
+                placeholder="Enter your name (e.g., John Doe)",
+                help="Each user gets their own progress tracking file"
+            )
+        
+        with col2:
+            if st.button("Login/Create User", type="primary", use_container_width=True):
+                if username.strip():
+                    st.session_state.current_user = username.strip()
+                    st.session_state.user_answers_file = self.get_user_answers_file(username.strip())
+                    st.success(f"✅ Logged in as: {username.strip()}")
+                    st.rerun()
+                else:
+                    st.error("Please enter a valid name")
+        
+        # Show current user status
+        if st.session_state.current_user:
+            st.info(f"📚 Currently studying as: **{st.session_state.current_user}**")
+            
+            # Show user's progress summary
+            if st.session_state.user_answers_file:
+                user_answers = self.load_user_answers(st.session_state.user_answers_file)
+                total_questions = self.get_total_questions()
+                answered_questions = len([q for q, data in user_answers.items() if data.get('Users_choice')])
+                correct_answers = len([q for q, data in user_answers.items() 
+                                     if data.get('Users_choice') == data.get('Correct_result')])
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Questions Answered", f"{answered_questions}/{total_questions}")
+                with col2:
+                    st.metric("Correct Answers", correct_answers)
+                with col3:
+                    accuracy = round((correct_answers / answered_questions * 100), 1) if answered_questions > 0 else 0
+                    st.metric("Accuracy", f"{accuracy}%")
+        else:
+            st.warning("⚠️ Please enter your name to start tracking your progress")
+            return False
+        
+        return True
+
+    def get_question_status_for_user(self, question_num, user_answers):
+        """Get status for a specific question for the current user"""
+        question_key = f"Question_{question_num}"
+        if question_key not in user_answers:
+            return "🤔"  # Needs answer
+        
+        question_data = user_answers[question_key]
+        users_choice = question_data.get('Users_choice')
+        correct_result = question_data.get('Correct_result')
+        
+        if not users_choice:
+            return "🤔"  # Needs answer
+        elif users_choice == correct_result:
+            return "✅"  # Correct
+        else:
+            return "❌"  # Wrong
+
+    def update_user_answer(self, question_num, user_choice, correct_answer=None):
+        """Update user's answer in their personal JSON file"""
+        if not st.session_state.user_answers_file:
+            return
+        
+        user_answers = self.load_user_answers(st.session_state.user_answers_file)
+        question_key = f"Question_{question_num}"
+        
+        if question_key not in user_answers:
+            user_answers[question_key] = {}
+        
+        user_answers[question_key]["Users_choice"] = user_choice
+        if correct_answer:
+            user_answers[question_key]["Correct_result"] = correct_answer
+        
+        self.save_user_answers(st.session_state.user_answers_file, user_answers)
+
+    def get_total_questions(self):
+        """Get total number of questions available"""
+        return len(self.pdf_files)
+
 def main():
     st.set_page_config(
         page_title="Law Study Tool (OCR)",
@@ -410,6 +544,13 @@ def main():
         st.error("No PDF files found in the 'all_questions' directory.")
         return
     
+    # User Management Section (BEFORE Question Navigation)
+    user_logged_in = app.user_management_section()
+    if not user_logged_in:
+        st.stop()  # Stop here if user not logged in
+    
+    st.markdown("---")
+    
     # Initialize session state variables
     if 'current_question_index' not in st.session_state:
         st.session_state.current_question_index = 0
@@ -425,19 +566,21 @@ def main():
     # Sidebar for navigation
     st.sidebar.header("📋 Question Navigation")
     
+    # Load current user's answers
+    user_answers = app.load_user_answers(st.session_state.user_answers_file)
     total_questions = len(app.pdf_files)
     st.sidebar.write(f"Total Questions: {total_questions}")
     
-    # Show statistics
+    # Show statistics for current user
     correct_count = 0
     wrong_count = 0
     needs_answer_count = 0
     
     for i in range(total_questions):
-        status = app.get_question_status(i + 1)
-        if status == 'correct':
+        status = app.get_question_status_for_user(i + 1, user_answers)
+        if status == '✅':
             correct_count += 1
-        elif status == 'wrong':
+        elif status == '❌':
             wrong_count += 1
         else:
             needs_answer_count += 1
@@ -452,7 +595,7 @@ def main():
         st.sidebar.markdown("### ❌ Review Wrong Answers")
         wrong_questions = []
         for i in range(total_questions):
-            if app.get_question_status(i + 1) == 'wrong':
+            if app.get_question_status_for_user(i + 1, user_answers) == '❌':
                 wrong_questions.append(f"Question {i + 1}")
         
         if wrong_questions:
@@ -472,10 +615,10 @@ def main():
     # Show answer summary (expandable)
     if correct_count + wrong_count > 0:
         with st.sidebar.expander("📊 View All Results"):
-            for question_key in sorted(app.answers_data.keys(), key=lambda x: int(x.split('_')[1])):
+            for question_key in sorted(user_answers.keys(), key=lambda x: int(x.split('_')[1])):
                 q_num = question_key.split('_')[1]
-                correct_answer = app.answers_data[question_key].get("Correct_result")
-                user_choice = app.answers_data[question_key].get("Users_choice")
+                correct_answer = user_answers[question_key].get("Correct_result")
+                user_choice = user_answers[question_key].get("Users_choice")
                 if correct_answer and user_choice:
                     if correct_answer == user_choice:
                         st.success(f"Q{q_num}: {user_choice} ✓")
@@ -488,13 +631,8 @@ def main():
     question_options = []
     for i in range(total_questions):
         question_num = i + 1
-        status = app.get_question_status(question_num)
-        if status == 'correct':
-            question_options.append(f"✅ Question {question_num}")
-        elif status == 'wrong':
-            question_options.append(f"❌ Question {question_num}")
-        else:
-            question_options.append(f"🤔 Question {question_num}")
+        status = app.get_question_status_for_user(question_num, user_answers)
+        question_options.append(f"{status} Question {question_num}")
     selected_question = st.sidebar.selectbox(
         "Jump to Question:",
         question_options,
@@ -514,7 +652,7 @@ def main():
     current_pdf = app.pdf_files[st.session_state.current_question_index]
     question_number = st.session_state.current_question_index + 1
     
-        # Get cached question data (OCR runs only once per question)
+    # Get cached question data (OCR runs only once per question)
     cached_result = app.get_cached_question_data(current_pdf, question_number)
     if cached_result[0] is None:  # raw_text is None
         st.error("Failed to load the current question.")
@@ -582,8 +720,9 @@ def main():
         
     # Submit and Show Explanation buttons (separate section)
     if st.session_state.user_answer:
-        # Check if already submitted
-        already_submitted = app.get_user_choice(question_number)
+        # Check if already submitted in user's personal file
+        question_key = f"Question_{question_number}"
+        already_submitted = user_answers.get(question_key, {}).get('Users_choice')
         
         st.markdown("---")  # Add separator
         st.subheader("📝 Submit & Review")
@@ -597,7 +736,7 @@ def main():
                 submit_clicked = st.button("📝 Submit Answer", key="submit_answer_btn", type="primary", use_container_width=True)
             
             if submit_clicked:
-                app.store_user_choice(question_number, st.session_state.user_answer)
+                app.update_user_answer(question_number, st.session_state.user_answer, correct_answer)
                 # Force sidebar refresh by updating session state
                 if 'sidebar_refresh' not in st.session_state:
                     st.session_state.sidebar_refresh = 0
@@ -612,8 +751,8 @@ def main():
         with action_col2:
             if st.button("📖 Show Explanation", key="show_explanation_btn", use_container_width=True):
                 # Auto-submit if not already submitted
-                if not app.get_user_choice(question_number):
-                    app.store_user_choice(question_number, st.session_state.user_answer)
+                if not already_submitted:
+                    app.update_user_answer(question_number, st.session_state.user_answer, correct_answer)
                 st.session_state.show_explanation = True
         
         if st.session_state.show_explanation:
@@ -648,7 +787,9 @@ def main():
         
         with manual_col2:
             if manual_answer and st.button("💾 Save Answer", key=f"save_answer_{question_number}", type="secondary", use_container_width=True):
+                # Store in both global answers and user's personal file
                 app.store_correct_answer(question_number, manual_answer)
+                app.update_user_answer(question_number, st.session_state.user_answer if st.session_state.user_answer else None, manual_answer)
                 st.success(f"✅ Saved: {manual_answer}", icon="✅")
                 # Update the cached data
                 if f"question_{question_number}" in st.session_state.question_data_cache:
@@ -683,7 +824,6 @@ def main():
             try:
                 with open(current_pdf, "rb") as pdf_file:
                     pdf_bytes = pdf_file.read()
-                    import base64
                     b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
                     
                     # Create a data URL for the PDF
