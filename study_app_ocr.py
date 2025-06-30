@@ -526,6 +526,89 @@ class StudyAppOCR:
         """Get total number of questions available"""
         return len(self.pdf_files)
 
+    def create_pdf_viewer_options(self, pdf_path, question_number):
+        """Create multiple PDF viewing options for better compatibility"""
+        pdf_name = os.path.basename(pdf_path)
+        
+        try:
+            with open(pdf_path, "rb") as pdf_file:
+                pdf_bytes = pdf_file.read()
+                
+                st.markdown(f"**📄 File:** `{pdf_name}`")
+                
+                # Option 1: Download button (most reliable across all browsers)
+                st.download_button(
+                    label="💾 Download PDF",
+                    data=pdf_bytes,
+                    file_name=pdf_name,
+                    mime="application/pdf",
+                    key=f"download_pdf_{question_number}",
+                    help="Most reliable option: Download and open in your PDF viewer",
+                    use_container_width=True
+                )
+                
+                st.markdown("---")
+                st.markdown("**🔍 Quick Preview Options:**")
+                
+                # Option 2: PDF as Images (most compatible for viewing)
+                if st.checkbox("🖼️ Show as Images", key=f"img_pdf_{question_number}", help="Convert PDF to images for viewing"):
+                    try:
+                        # Check if we have the conversion capability
+                        images = convert_from_path(pdf_path, dpi=150)
+                        
+                        for i, image in enumerate(images):
+                            st.image(image, caption=f"Page {i+1} of {pdf_name}", use_column_width=True)
+                            
+                    except Exception as e:
+                        st.error(f"Could not convert PDF to images: {str(e)}")
+                        st.info("💡 Please use the download button to view the PDF.")
+                
+                # Option 3: Embedded viewer (may not work in all environments)
+                if st.checkbox("📖 Try Embedded Viewer", key=f"embed_pdf_{question_number}", help="May not work in all browsers/deployments"):
+                    b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+                    
+                    # More robust iframe approach
+                    st.markdown(f"""
+                    <div style="width: 100%; height: 500px; border: 2px solid #ddd; border-radius: 10px; overflow: hidden; background-color: #f8f9fa;">
+                        <object data="data:application/pdf;base64,{b64_pdf}" 
+                                type="application/pdf" 
+                                width="100%" 
+                                height="100%">
+                            <embed src="data:application/pdf;base64,{b64_pdf}" 
+                                   type="application/pdf" 
+                                   width="100%" 
+                                   height="100%">
+                                <div style="padding: 20px; text-align: center;">
+                                    <p style="color: #666;">📄 PDF cannot be displayed in this browser.</p>
+                                    <p style="color: #666;">Please use the download button above to view the PDF.</p>
+                                </div>
+                            </embed>
+                        </object>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.info("💡 If nothing appears above, your browser doesn't support embedded PDFs. Use the download option instead.")
+                
+                # Option 4: Direct link (backup)
+                if st.checkbox("🔗 Direct Link Method", key=f"link_pdf_{question_number}", help="Alternative link-based approach"):
+                    b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+                    pdf_data_url = f"data:application/pdf;base64,{b64_pdf}"
+                    
+                    st.markdown(f"""
+                    <a href="{pdf_data_url}" target="_blank" 
+                       style="display: inline-block; background-color: #007bff; color: white; 
+                       padding: 12px 24px; text-decoration: none; border-radius: 8px; 
+                       font-weight: bold; margin: 5px;">
+                        🌐 Open in New Tab
+                    </a>
+                    """, unsafe_allow_html=True)
+                    
+                    st.warning("⚠️ This method may show 'about:blank' in some browsers or deployment environments.")
+                
+        except Exception as e:
+            st.error(f"Error loading PDF: {str(e)}")
+            st.info("The PDF file might be corrupted or inaccessible.")
+
 def main():
     st.set_page_config(
         page_title="Law Study Tool (OCR)",
@@ -817,37 +900,9 @@ def main():
             st.rerun()
     
     with nav_col3:
-        if st.button("📄 View Original PDF", use_container_width=True):
-            pdf_name = os.path.basename(current_pdf)
-            
-            # Create a link to view PDF in new tab
-            try:
-                with open(current_pdf, "rb") as pdf_file:
-                    pdf_bytes = pdf_file.read()
-                    b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-                    
-                    # Create a data URL for the PDF
-                    pdf_data_url = f"data:application/pdf;base64,{b64_pdf}"
-                    
-                    # JavaScript to open PDF in new tab
-                    st.markdown(f"""
-                    <script>
-                        window.open("{pdf_data_url}", "_blank");
-                    </script>
-                    <p>✅ Opening PDF in new tab...</p>
-                    """, unsafe_allow_html=True)
-                    
-                    # Also provide a direct link as backup
-                    st.markdown(f"""
-                    <a href="{pdf_data_url}" target="_blank">
-                        <button style="background-color:#4CAF50;color:white;padding:10px;border:none;border-radius:5px;cursor:pointer;">
-                            🔗 Click here if PDF didn't open automatically
-                        </button>
-                    </a>
-                    """, unsafe_allow_html=True)
-                    
-            except Exception as e:
-                st.error(f"Error loading PDF: {str(e)}")
+        # PDF viewing options in an expander
+        with st.expander("📄 View Original PDF"):
+            app.create_pdf_viewer_options(current_pdf, question_number)
     
     # Footer
     st.write("---")
