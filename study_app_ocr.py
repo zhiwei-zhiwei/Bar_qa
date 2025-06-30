@@ -883,7 +883,7 @@ def main():
     st.markdown("---")
     st.subheader("🧭 Navigation")
     
-    nav_col1, nav_col2, nav_col3 = st.columns(3)
+    nav_col1, nav_col2 = st.columns(2)
     
     with nav_col1:
         if st.button("⬅️ Previous Question", disabled=(st.session_state.current_question_index == 0), use_container_width=True):
@@ -899,10 +899,10 @@ def main():
             st.session_state.show_explanation = False
             st.rerun()
     
-    with nav_col3:
-        # PDF viewing options in an expander
-        with st.expander("📄 View Original PDF"):
-            app.create_pdf_viewer_options(current_pdf, question_number)
+    
+    st.markdown("---")
+    with st.expander("📄 View Original PDF"):
+        app.create_pdf_viewer_options(current_pdf, question_number)
     
     # Footer
     st.write("---")
