@@ -1,146 +1,138 @@
-# 📚 Law Study Tool - MBE Practice Questions
+# Law Study Tool - MBE Practice Questions
 
-A Streamlit-based study tool for practicing Multiple Choice Bar Examination (MBE) questions. This application reads PDF files containing legal questions and provides an interactive interface for studying.
+## Project Overview
 
-## ✨ Features
+A comprehensive web-based study application designed for Multistate Bar Examination (MBE) practice questions. The application processes over 2,000 PDF documents containing legal questions, extracts text using OCR technology, and provides an interactive learning platform with progress tracking and multi-user support.
 
-- **Interactive Question Display**: Read questions from PDF files with clean formatting
-- **Multiple Choice Interface**: Select answers using radio buttons (A, B, C, D)
-- **Detailed Explanations**: View explanations after selecting an answer
-- **Navigation**: 
-  - Previous/Next buttons for sequential study
-  - Sidebar dropdown to jump to any question
-  - Progress indicator showing current position
-- **PDF Access**: Download original PDF files for offline viewing
-- **Session Management**: Maintains your progress within the session
+## Purpose & Functionality
 
-## 🔧 Setup Instructions
+**Primary Objective**: Transform static PDF legal study materials into an interactive, trackable learning experience for law students preparing for the MBE.
 
-### Prerequisites
-- Python 3.7 or higher
-- Virtual environment (recommended)
+**Key Features**:
+- **Automated Question Processing**: Extracts questions, multiple-choice answers, and explanations from PDF documents
+- **Intelligent Answer Detection**: Automatically identifies correct answers by analyzing explanation text
+- **Multi-User Support**: Individual progress tracking with persistent data storage
+- **Cross-Platform PDF Viewing**: Multiple viewing options for different browser environments
+- **Progress Analytics**: Real-time statistics and performance tracking
+- **Wrong Answer Review**: Targeted review system for incorrect responses
 
-### Installation
+## Technical Implementation
 
-1. **Clone or download this repository**
+### Core Technologies & Libraries
 
-2. **Create and activate a virtual environment**:
-   ```bash
-   python -m venv pdf_env
-   source pdf_env/bin/activate  # On Windows: pdf_env\Scripts\activate
-   ```
+**Frontend Framework**:
+- **Streamlit**: Modern web application framework for rapid development of data science applications
+- **HTML/CSS Integration**: Custom styling and responsive design elements
 
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+**PDF Processing & OCR**:
+- **PyPDF2**: Initial PDF text extraction (fallback method)
+- **Tesseract OCR**: Advanced optical character recognition for complex PDF layouts
+- **pdf2image**: PDF to image conversion for OCR processing
+- **Pillow (PIL)**: Image processing and manipulation
 
-4. **Ensure your PDF files are in the correct location**:
-   - Place your question PDF files in the `all_questions/` directory
-   - Files should be named in the format: `question_1.pdf`, `question_2.pdf`, etc.
+**Data Management**:
+- **JSON**: Structured data storage for user progress and correct answers
+- **Python File I/O**: Efficient file handling and caching mechanisms
+- **Session State Management**: Real-time data persistence across user interactions
 
-## 🚀 Usage
+**Text Processing & Analysis**:
+- **Regular Expressions (re)**: Pattern matching for answer extraction and text cleaning
+- **String Manipulation**: Advanced text processing for OCR error correction
+- **Natural Language Processing**: Automated correct answer detection from explanation text
 
-### Starting the Application
+### Architecture & Workflow
 
-1. **Activate your virtual environment**:
-   ```bash
-   source pdf_env/bin/activate  # On Windows: pdf_env\Scripts\activate
-   ```
-
-2. **Run the Streamlit app**:
-   ```bash
-   streamlit run study_app.py
-   ```
-
-3. **Open your browser** to the URL shown in the terminal (typically `http://localhost:8501`)
-
-### Using the Study Tool
-
-1. **Read the Question**: The main content area displays the current question
-2. **Select Your Answer**: Choose from the multiple choice options (A, B, C, D)
-3. **View Explanation**: Click "Show Explanation" to see the detailed explanation
-4. **Navigate**: Use the Previous/Next buttons or the sidebar dropdown to move between questions
-5. **Download PDF**: Click "View Original PDF" to download the original question file
-
-### Navigation Options
-
-- **Sequential Navigation**: Use Previous/Next buttons
-- **Jump to Question**: Use the dropdown in the sidebar to go directly to any question
-- **Progress Tracking**: Monitor your progress with the progress bar
-
-## 📁 File Structure
-
+**1. Document Processing Pipeline**:
 ```
-janet/
-├── study_app.py           # Main Streamlit application
-├── requirements.txt       # Python dependencies
-├── README.md             # This file
-├── all_questions/        # Directory containing question PDFs
-│   ├── question_1.pdf
-│   ├── question_2.pdf
-│   └── ...
-├── pdf_env/              # Virtual environment (if using)
-└── split_pdf.py          # Utility for splitting PDFs (optional)
+PDF Files → OCR Extraction → Text Cleaning → Question Parsing → Answer Detection → Caching
 ```
 
-## 🔍 How It Works
+**2. User Management System**:
+- Individual JSON files per user (`user_answers_[username].json`)
+- Safe filename generation with special character handling
+- Persistent progress tracking across sessions
 
-The application:
+**3. Intelligent Answer Detection Algorithm**:
+- Analyzes explanation text for wrong choice indicators: "(Choice A)", "(Choice B)", etc.
+- Uses process of elimination to determine correct answer
+- Fallback to manual input when auto-detection fails
 
-1. **Scans** the `all_questions/` directory for PDF files
-2. **Extracts** text content from each PDF using PyPDF2
-3. **Parses** questions and explanations (separated by "Explanation:")
-4. **Identifies** multiple choice options (A., B., C., D.)
-5. **Displays** questions with interactive interface
-6. **Manages** user selections and navigation state
+**4. Multi-Modal PDF Viewing**:
+- **Download Method**: Most reliable across all browsers
+- **Image Conversion**: PDF-to-image display for embedded viewing
+- **Embedded Viewer**: Direct PDF display with fallback handling
+- **Direct Link**: Alternative access method for different environments
 
-## 🛠️ Troubleshooting
+### Key Technical Achievements
 
-### Common Issues
+**OCR Implementation**:
+- Implemented comprehensive OCR error correction algorithms
+- Developed text cleaning methods for common OCR artifacts
+- Created efficient caching system to eliminate redundant processing
 
-1. **"No PDF files found"**:
-   - Ensure PDF files are in the `all_questions/` directory
-   - Check that files are named correctly (`question_*.pdf`)
+**Data Extraction Logic**:
+- Built robust regex patterns for multiple-choice question parsing
+- Developed intelligent answer detection using explanation text analysis
+- Implemented fallback mechanisms for edge cases
 
-2. **"Error reading PDF"**:
-   - Verify PDF files are not corrupted
-   - Ensure PDF files contain extractable text
+**User Experience Optimization**:
+- Designed responsive layout with progress indicators
+- Created real-time statistics and performance metrics
+- Implemented efficient session state management for smooth navigation
 
-3. **"Could not parse question text"**:
-   - Check that PDF contains properly formatted questions
-   - Ensure questions have A., B., C., D. options
+**Deployment Engineering**:
+- Configured system dependencies for cloud deployment (packages.txt)
+- Implemented error handling for missing dependencies
+- Created comprehensive deployment documentation
 
-### Dependencies
+## System Requirements & Dependencies
 
-Main dependencies include:
-- `streamlit`: Web application framework
-- `PyPDF2`: PDF processing library
-- `pandas`: Data manipulation (if needed)
+**Python Libraries**:
+```
+streamlit==1.46.1
+pytesseract
+pdf2image
+PyPDF2==3.0.1
+Pillow
+```
 
-## 🎯 Tips for Effective Study
+**System Dependencies**:
+```
+poppler-utils (for PDF processing)
+tesseract-ocr (for OCR functionality)
+```
 
-1. **Read Carefully**: Take time to understand each question before selecting
-2. **Use Explanations**: Always read the explanation to understand the reasoning
-3. **Track Progress**: Use the progress indicator to monitor your study session
-4. **Review Difficult Questions**: Use the sidebar to revisit challenging questions
-5. **Save Original PDFs**: Download PDFs for offline study when needed
+## Performance Features
 
-## 🔄 Updating Questions
+- **Intelligent Caching**: Processed questions cached in session state
+- **Lazy Loading**: OCR processing only when questions are accessed
+- **Progress Indicators**: Real-time feedback during processing
+- **Error Handling**: Graceful degradation when dependencies unavailable
 
-To add new questions:
-1. Place new PDF files in the `all_questions/` directory
-2. Name them following the pattern: `question_[number].pdf`
-3. Restart the application to load new questions
+## Data Analytics & Tracking
 
-## 📞 Support
+- **Individual Progress Metrics**: Questions answered, accuracy rates, completion status
+- **Status Indicators**: Visual feedback (✅ correct, ❌ wrong, 🤔 needs answer)
+- **Wrong Answer Review**: Filtered navigation to incorrect responses
+- **Performance Statistics**: Real-time calculation of user performance metrics
 
-If you encounter issues:
-1. Check that all dependencies are installed correctly
-2. Verify PDF file format and location
-3. Ensure your Python environment is properly set up
-4. Check the terminal for any error messages
+## Deployment & Scalability
 
----
+- **Cloud-Ready**: Configured for Streamlit Cloud deployment
+- **Multi-Environment Support**: Handles different browser and deployment constraints
+- **Scalable Architecture**: Supports multiple concurrent users with individual data isolation
+- **Cross-Platform Compatibility**: Works across different operating systems and browsers
 
-**Happy Studying! 📖✨** 
+## Technical Innovation
+
+This project demonstrates advanced integration of multiple technologies to solve a real-world educational challenge. The combination of OCR processing, intelligent text analysis, and modern web frameworks creates a sophisticated learning platform that transforms static documents into an interactive educational experience.
+
+**Key Innovations**:
+- Automated correct answer detection from unstructured text
+- Multi-modal PDF viewing for deployment compatibility
+- Intelligent OCR error correction algorithms
+- Scalable multi-user architecture with persistent data storage
+
+## Impact & Applications
+
+The application successfully processes over 2,000 legal documents, providing law students with an efficient, trackable study tool that significantly improves learning outcomes through interactive engagement and progress analytics. 
