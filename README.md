@@ -1,5 +1,8 @@
 # Law Study Tool - MBE Practice Questions
 
+## Access the project online:
+https://crunyqkeasfqkn4rvmsoaj.streamlit.app
+
 ## Project Overview
 
 A comprehensive web-based study application designed for Multistate Bar Examination (MBE) practice questions. The application processes over 2,000 PDF documents containing legal questions, extracts text using OCR technology, and provides an interactive learning platform with progress tracking and multi-user support.
